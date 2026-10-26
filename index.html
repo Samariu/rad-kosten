@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rad-Kosten</title>
+<meta name="description" content="Erfasst die Ausgaben für dein Fahrrad und rechnet aus, was es dich pro Monat und pro Tag kostet.">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Rad-Kosten">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<!-- First run: without a purchase date there is no denominator for the whole app. -->
+<section id="view-setup" class="view setup" hidden>
+  <div class="setup-inner">
+    <h1>Rad-Kosten</h1>
+    <p class="lead">Trag einmalig dein Rad ein. Danach nur noch Ausgaben erfassen — den Rest rechnet die App.</p>
+    <form id="setup-form" class="form">
+      <label>Name des Rads
+        <input name="bikeName" type="text" value="Mein Rad" required autocomplete="off">
+      </label>
+      <label>Kaufdatum
+        <input name="purchaseDate" type="date" required>
+        <small>Ab hier wird gerechnet.</small>
+      </label>
+      <label>Kaufpreis
+        <input name="purchasePrice" type="text" inputmode="decimal" placeholder="z. B. 1.200,00" autocomplete="off">
+        <small>Darf 0 sein, wenn du ihn nicht mitrechnen willst.</small>
+      </label>
+      <label>Kilometerstand beim Kauf
+        <input name="purchaseOdometerKm" type="number" min="0" step="1" value="0" inputmode="numeric">
+        <small>Meist 0. Nur nötig, wenn du Kosten pro km sehen willst.</small>
+      </label>
+      <button type="submit" class="btn btn-primary btn-block">Los geht’s</button>
+    </form>
+  </div>
+</section>
+
+<div id="app" hidden>
+  <header class="appbar">
+    <h1 id="bike-title">Mein Rad</h1>
+    <p id="bike-subtitle" class="appbar-sub"></p>
+  </header>
+
+  <main>
+    <!-- ------------------------------------------------------- Dashboard -->
+    <section id="view-dashboard" class="view">
+      <div class="card hero-card">
+        <p class="stat-label">Kosten pro Monat</p>
+        <p class="hero" id="hero-month">–</p>
+        <p class="hero-sub"><span id="hero-day">–</span> pro Tag</p>
+      </div>
+
+      <div class="tiles">
+        <div class="card tile">
+          <p class="stat-label">Insgesamt ausgegeben</p>
+          <p class="stat-value" id="stat-total">–</p>
+          <p class="stat-foot" id="stat-owned"></p>
+        </div>
+        <div class="card tile">
+          <p class="stat-label">Letzte 30 Tage</p>
+          <p class="stat-value" id="stat-30">–</p>
+          <p class="stat-foot" id="stat-30-rate"></p>
+        </div>
+        <div class="card tile">
+          <p class="stat-label">Letzte 90 Tage</p>
+          <p class="stat-value" id="stat-90">–</p>
+          <p class="stat-foot" id="stat-90-rate"></p>
+        </div>
+        <div class="card tile" id="tile-km" hidden>
+          <p class="stat-label">Kosten pro km</p>
+          <p class="stat-value" id="stat-km">–</p>
+          <p class="stat-foot" id="stat-km-foot"></p>
+        </div>
+      </div>
+
+      <section class="card">
+        <h2>Wofür das Geld draufgeht</h2>
+        <div id="breakdown"></div>
+      </section>
+
+      <section class="card">
+        <h2>Ausgaben pro Monat</h2>
+        <div id="monthly" class="chart"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Zuletzt erfasst</h2>
+          <button class="btn btn-quiet" data-goto="history">Alle</button>
+        </div>
+        <ul id="recent" class="entries"></ul>
+      </section>
+    </section>
+
+    <!-- --------------------------------------------------------- History -->
+    <section id="view-history" class="view" hidden>
+      <div id="history"></div>
+    </section>
+
+    <!-- -------------------------------------------------------- Odometer -->
+    <section id="view-odo" class="view" hidden>
+      <section class="card">
+        <h2>Kilometerstand eintragen</h2>
+        <form id="odo-form" class="form form-row">
+          <label>Datum <input name="date" type="date" required></label>
+          <label>Stand (km) <input name="km" type="number" min="0" step="1" inputmode="numeric" required placeholder="z. B. 2450"></label>
+          <button type="submit" class="btn btn-primary">Speichern</button>
+        </form>
+        <p class="hint">Der Gesamtstand deines Tachos, nicht die Strecke der Fahrt.</p>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2>Verlauf</h2><span id="odo-summary" class="stat-foot"></span></div>
+        <ul id="odo-list" class="entries"></ul>
+      </section>
+    </section>
+
+    <!-- -------------------------------------------------------- Settings -->
+    <section id="view-settings" class="view" hidden>
+      <section class="card">
+        <h2>Dein Rad</h2>
+        <form id="settings-form" class="form">
+          <label>Name <input name="bikeName" type="text" required autocomplete="off"></label>
+          <label>Kaufdatum <input name="purchaseDate" type="date" required></label>
+          <label>Kaufpreis <input name="purchasePrice" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label>Kilometerstand beim Kauf <input name="purchaseOdometerKm" type="number" min="0" step="1" inputmode="numeric"></label>
+          <button type="submit" class="btn btn-primary btn-block">Speichern</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Wiederkehrende Ausgaben</h2>
+          <button class="btn btn-quiet" id="add-recurring">+ Neu</button>
+        </div>
+        <p class="hint">Werden beim Öffnen der App automatisch für jeden fälligen Termin eingetragen.</p>
+        <ul id="recurring-list" class="entries"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Daten</h2>
+        <p class="hint">Alles liegt nur auf diesem Gerät. Ohne Sicherung ist es weg, wenn du die Browserdaten löschst.</p>
+        <div class="btn-row">
+          <button class="btn" id="export-json">Sicherung (JSON)</button>
+          <button class="btn" id="export-csv">Tabelle (CSV)</button>
+          <button class="btn" id="import-json">Sicherung laden</button>
+        </div>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+        <p class="hint" id="storage-note"></p>
+      </section>
+
+      <section class="card">
+        <h2>Gefahrenzone</h2>
+        <button class="btn btn-danger" id="wipe">Alle Daten löschen</button>
+      </section>
+
+      <p class="version">Rad-Kosten · <span id="sw-version">–</span></p>
+    </section>
+  </main>
+
+  <button id="fab" class="fab" aria-label="Ausgabe erfassen">+</button>
+
+  <nav class="tabbar">
+    <button data-view="dashboard" class="tab is-active">Übersicht</button>
+    <button data-view="history" class="tab">Ausgaben</button>
+    <button data-view="odo" class="tab">Kilometer</button>
+    <button data-view="settings" class="tab">Mehr</button>
+  </nav>
+</div>
+
+<!-- ------------------------------------------------------- Expense sheet -->
+<dialog id="expense-dialog" class="sheet">
+  <form id="expense-form" method="dialog" class="form">
+    <div class="sheet-head">
+      <h2 id="expense-title">Ausgabe erfassen</h2>
+      <button type="button" class="btn btn-quiet" data-close>Abbrechen</button>
+    </div>
+    <label>Betrag
+      <input name="amount" type="text" inputmode="decimal" required placeholder="0,00" autocomplete="off">
+    </label>
+    <label>Datum <input name="date" type="date" required></label>
+    <fieldset class="chips">
+      <legend>Kategorie</legend>
+      <div id="category-chips"></div>
+    </fieldset>
+    <label>Notiz (optional)
+      <input name="note" type="text" autocomplete="off" placeholder="z. B. neue Kette">
+    </label>
+    <p class="error" id="expense-error" hidden></p>
+    <div class="btn-row">
+      <button type="submit" class="btn btn-primary btn-block">Speichern</button>
+      <button type="button" class="btn btn-danger" id="expense-delete" hidden>Löschen</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ----------------------------------------------------- Recurring sheet -->
+<dialog id="recurring-dialog" class="sheet">
+  <form id="recurring-form" method="dialog" class="form">
+    <div class="sheet-head">
+      <h2 id="recurring-title">Wiederkehrende Ausgabe</h2>
+      <button type="button" class="btn btn-quiet" data-close>Abbrechen</button>
+    </div>
+    <label>Bezeichnung <input name="label" type="text" required placeholder="z. B. Versicherung" autocomplete="off"></label>
+    <label>Betrag <input name="amount" type="text" inputmode="decimal" required placeholder="0,00" autocomplete="off"></label>
+    <label>Rhythmus
+      <select name="interval">
+        <option value="monthly">monatlich</option>
+        <option value="weekly">wöchentlich</option>
+        <option value="yearly">jährlich</option>
+      </select>
+    </label>
+    <label>Kategorie <select name="category" id="recurring-category"></select></label>
+    <label>Erste Fälligkeit <input name="startDate" type="date" required></label>
+    <label>Letzte Fälligkeit (optional) <input name="endDate" type="date"></label>
+    <p class="error" id="recurring-error" hidden></p>
+    <div class="btn-row">
+      <button type="submit" class="btn btn-primary btn-block">Speichern</button>
+      <button type="button" class="btn btn-danger" id="recurring-delete" hidden>Löschen</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

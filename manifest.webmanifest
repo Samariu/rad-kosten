@@ -1,0 +1,21 @@
+{
+  "name": "Rad-Kosten",
+  "short_name": "Rad-Kosten",
+  "description": "Erfasst die Ausgaben für dein Fahrrad und rechnet aus, was es dich pro Monat und pro Tag kostet.",
+  "start_url": ".",
+  "scope": ".",
+  "id": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f9f9f7",
+  "theme_color": "#fcfcfb",
+  "lang": "de",
+  "dir": "ltr",
+  "categories": ["finance", "utilities"],
+  "icons": [
+    { "src": "./icons/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
